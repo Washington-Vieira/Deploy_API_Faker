@@ -5,42 +5,50 @@ import random
 from pydantic import BaseModel
 from datetime import datetime
 
+
 app = FastAPI()
 fake = Faker('pt_BR')
 
+
 categorias_varejo = ['Alimentos', 'Bebidas', 'Limpeza', 'Higiene Pessoal', 'Eletrônicos', 'Roupas']
 
+
 class Fornecedor(BaseModel):
-    id: str
+    id: int
     nome: str
     cnpj: str
     telefone: str
     email: str
 
+
 class Produto(BaseModel):
-    id: str
+    id: int
     descricao: str
     codigo_barra: str
     preco: float
     categoria: str
-    fornecedor_id: str
+    fornecedor_id: int
+
 
 class EstoqueAtual(BaseModel):
-    produto_id: str
+    produto_id: int
     quantidade: int
     localizacao: str
 
+
 class EstoqueHistorico(BaseModel):
-    produto_id: str
+    produto_id: int
     quantidade: int
     data_movimento: datetime
 
+
 class Venda(BaseModel):
-    id: str
-    produto_id: str
+    id: int
+    produto_id: int
     quantidade: int
     data_venda: datetime
     valor_unitario: float
+
 
 # Geração fixa para assegurar consistência no relacionamento
 FORNECEDORES = []
@@ -48,23 +56,25 @@ PRODUTOS = []
 
 def setup_dados():
     global FORNECEDORES, PRODUTOS
+    next_id = 1  # contador para ids inteiros únicos
     FORNECEDORES = [
         Fornecedor(
-            id=fake.uuid4(),
+            id=next_id + i,
             nome=fake.company(),
             cnpj=fake.cnpj(),
             telefone=fake.phone_number(),
             email=fake.company_email()
-        ) for _ in range(5)
+        ) for i in range(5)
     ]
+    next_id += len(FORNECEDORES)
     PRODUTOS = []
-    for _ in range(20):
+    for i in range(20):
         fornecedor = random.choice(FORNECEDORES)
         categoria = random.choice(categorias_varejo)
         descricao = f"{fake.word().capitalize()} {categoria}"
         PRODUTOS.append(
             Produto(
-                id=fake.uuid4(),
+                id=next_id + i,
                 descricao=descricao,
                 codigo_barra=fake.ean(length=13),
                 preco=round(random.uniform(1.0, 200.0), 2),
@@ -72,6 +82,7 @@ def setup_dados():
                 fornecedor_id=fornecedor.id
             )
         )
+
 
 setup_dados()
 
@@ -112,11 +123,12 @@ def get_estoque_historico():
 @app.get("/vendas", response_model=List[Venda])
 def get_vendas():
     vendas = []
-    for _ in range(10):
+    next_id = max([produto.id for produto in PRODUTOS]) + 1
+    for i in range(10):
         produto = random.choice(PRODUTOS)
         vendas.append(
             Venda(
-                id=fake.uuid4(),
+                id=next_id + i,
                 produto_id=produto.id,
                 quantidade=random.randint(1, 20),
                 data_venda=fake.date_time_between(start_date='-1y', end_date='now'),
